@@ -16,7 +16,7 @@ public class AuthService {
     private static final int MAX_USER_ID_LENGTH = 50;
     private static final int MIN_USER_ID_LENGTH = 3;
     private static final int MAX_PASSWORD_LENGTH = 50;
-    private static final int MIN_PASSWORD_LENGTH = 3;
+    private static final int MIN_PASSWORD_LENGTH = 8;
     private static final String REGEX = "^(?=.*[A-Z])(?=.*\\d).";
 
     private final JwtUtil jwtUtil;
@@ -96,7 +96,7 @@ public class AuthService {
 
         if (Objects.isNull(request.getPassword())
                 || request.getPassword().length() > MAX_PASSWORD_LENGTH) {
-            return Optional.of(LoginResponse.Error.INVALID_PASSWORD);
+            return Optional.of(LoginResponse.Error.INVALID_MAX_PASSWORD);
         }
 
         return Optional.empty();

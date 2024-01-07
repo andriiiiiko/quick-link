@@ -11,7 +11,8 @@ public class LoginResponse {
         OK,
         INVALID_USER_NAME,
         NAME_IS_EMPTY,
-        INVALID_PASSWORD
+        INVALID_PASSWORD,
+        INVALID_MAX_PASSWORD
     }
 
     private Error error;

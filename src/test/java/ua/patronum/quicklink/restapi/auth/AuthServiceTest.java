@@ -168,7 +168,7 @@ class AuthServiceTest {
                 "12345678-10-2345678-20-2345678-30-2345678-40-2345678-50-2");
 
         LoginResponse response = authService.login(request);
-        assertEquals(LoginResponse.Error.INVALID_PASSWORD, response.getError());
+        assertEquals(LoginResponse.Error.INVALID_MAX_PASSWORD, response.getError());
         assertNull(response.getToken());
 
         verify(userService, times(0)).findByUsername("Test1");
