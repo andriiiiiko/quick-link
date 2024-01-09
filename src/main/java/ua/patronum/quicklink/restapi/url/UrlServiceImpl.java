@@ -8,7 +8,9 @@ import ua.patronum.quicklink.data.repository.UrlRepository;
 import ua.patronum.quicklink.restapi.auth.UserService;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +26,9 @@ public class UrlServiceImpl implements UrlService {
 
     private final UrlRepository urlRepository;
     private final UserService userService;
+
+    private final UrlCacheService urlCacheService;
+
     private List<Url> userUrls;
     private final LocalDateTime currentTime = LocalDateTime.now();
 
@@ -135,19 +140,44 @@ public class UrlServiceImpl implements UrlService {
 
     @Override
     public RedirectResponse redirectOriginalUrl(RedirectRequest request) {
-        Optional<Url> optionalUrl = urlRepository.findByShortUrl(request.getShortUrl());
+        String shortUrl = request.getShortUrl();
 
-        if (optionalUrl.isEmpty()) {
-            return RedirectResponse.failed(Error.INVALID_SHORT_URL);
+        Url cachedUrl = urlCacheService.getCachedUrl(shortUrl);
+
+        if (cachedUrl != null) {
+            return handleCachedUrl(cachedUrl);
+        } else {
+            return handleNonCachedUrl(shortUrl);
         }
-        Url urls = optionalUrl.get();
+    }
 
-        if (currentTime.isAfter(urls.getExpirationDate())) {
+    private RedirectResponse handleCachedUrl(Url cachedUrl) {
+        if (currentTime.isAfter(cachedUrl.getExpirationDate())) {
+            urlCacheService.evictCache(cachedUrl.getShortUrl());
             return RedirectResponse.failed(Error.TIME_NOT_PASSED);
         }
-        urls.incrementVisitCount();
-        urlRepository.save(urls);
-        return RedirectResponse.success(urls.getOriginalUrl());
+
+        cachedUrl.incrementVisitCount();
+        urlRepository.save(cachedUrl);
+
+        return RedirectResponse.success(cachedUrl.getOriginalUrl());
+    }
+
+    private RedirectResponse handleNonCachedUrl(String shortUrl) {
+        Optional<Url> optionalUrl = urlRepository.findByShortUrl(shortUrl);
+
+        return optionalUrl.map(url -> {
+            if (currentTime.isAfter(url.getExpirationDate())) {
+                return RedirectResponse.failed(Error.TIME_NOT_PASSED);
+            }
+
+            url.incrementVisitCount();
+            urlRepository.save(url);
+
+            urlCacheService.cacheUrl(shortUrl, url);
+
+            return RedirectResponse.success(url.getOriginalUrl());
+        }).orElse(RedirectResponse.failed(Error.INVALID_SHORT_URL));
     }
 
     @Override
